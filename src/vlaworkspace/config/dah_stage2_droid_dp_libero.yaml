@@ -1,0 +1,227 @@
+seed: 42
+
+# =============================================================================
+# DAH Stage 2: DROID Diffusion Policy on LIBERO — full vision
+# Loads stage 1 UNet checkpoint, freezes compatible weights (conv blocks),
+# trains vision encoder (ResNet50) and FiLM layers.
+# =============================================================================
+
+batch_size: 128
+horizon: 16
+n_obs_steps: 2
+n_action_steps: 8
+n_latency_steps: 0
+
+train_mode: stage2_rollout
+ckpt_path: null    # Override from CLI: path to stage 1 checkpoint
+using_transformers: false
+
+task_name: dah_stage2_droid_dp_libero
+
+IO_meta:
+  shape_meta:
+    obs:
+      agentview_image:
+        shape: [3, 256, 256]
+        type: rgb
+      robot0_eye_in_hand_image:
+        shape: [3, 256, 256]
+        type: rgb
+      robot0_eef_pos:
+        shape: [3]
+        type: low_dim
+      robot0_eef_quat:
+        shape: [4]
+        type: low_dim
+      robot0_gripper_qpos:
+        shape: [1]
+        type: low_dim
+    action:
+      shape: [10]   # pos[3] + rot6d[6] + gripper[1]
+  slice_meta:
+    horizon: 16
+    n_obs_steps: 2
+    n_action_steps: 8
+    n_latency_steps: 0
+
+# =============================================================================
+# Dataset
+# =============================================================================
+dataset:
+  _target_: vlaworkspace.dataset.create_lerobot_dataset
+  repo_id: "JianZhou0420/libero_openvla_LeRobotv3_0"
+  n_horizon: 16
+  n_obs: 2
+  n_latency: 0
+
+# =============================================================================
+# Adaptor (Composable: LiberoRobot + DPModel)
+# =============================================================================
+adaptor:
+  _target_: vlaworkspace.adaptors.Adaptor
+  robot:
+    _target_: vlaworkspace.adaptors.robots.LiberoRobot
+  model:
+    _target_: vlaworkspace.adaptors.models.DPModel
+    norm_stats_path: "auto"
+    n_obs_steps: 2
+    crop_shape: null   # No crop — obs_encoder handles resize/crop internally
+    action_norm_stats_path: null  # Override from CLI for combined→per-suite workflow
+
+# =============================================================================
+# Policy (DROID Diffusion Policy — same UNet architecture as stage 1)
+# =============================================================================
+policy:
+  _target_: vlaworkspace.policy.droid_dp.DroidDiffusionPolicy
+  shape_meta: ${IO_meta.shape_meta}
+  noise_scheduler:
+    _target_: diffusers.schedulers.scheduling_ddim.DDIMScheduler
+    num_train_timesteps: 100
+    beta_start: 0.0001
+    beta_end: 0.02
+    beta_schedule: squaredcos_cap_v2
+    clip_sample: true
+    prediction_type: epsilon
+  horizon: ${horizon}
+  n_action_steps: ${n_action_steps}
+  n_obs_steps: ${n_obs_steps}
+  num_inference_steps: 10
+  diffusion_step_embed_dim: 256
+  down_dims: [256, 512, 1024]
+  kernel_size: 5
+  n_groups: 8
+  obs_encoder_group_norm: true
+  skip_normalization: true
+  noise_samples: 8
+  use_language: true
+  language_model_name: "distilbert-base-uncased"
+  feature_dimension: 512
+  image_size: 128
+  crop_size: 116
+  color_jitter: true
+
+# =============================================================================
+# EMA
+# =============================================================================
+ema:
+  _target_: vlaworkspace.model.DecoupledActionHead.diffusion.ema_model.EMAModel
+  update_after_step: 0
+  inv_gamma: 1.0
+  power: 0.75
+  min_value: 0.0
+  max_value: 0.9999
+
+# =============================================================================
+# DataLoader
+# =============================================================================
+dataloader:
+  batch_size: ${batch_size}
+  num_workers: 16
+  shuffle: true
+  pin_memory: true
+  persistent_workers: true
+  prefetch_factor: 4
+
+val_dataloader:
+  batch_size: ${batch_size}
+  num_workers: 4
+  shuffle: false
+  pin_memory: true
+  persistent_workers: true
+  prefetch_factor: 2
+
+# =============================================================================
+# Norm Stats Computation
+# =============================================================================
+norm_stats_batch_size: 64
+norm_stats_num_workers: 8
+norm_stats_output_dir: "assets"
+max_frames: null
+
+# Logging
+run_name: null
+run_dir: data/outputs/${run_name}
+
+# =============================================================================
+# Optimizer (Adam — same as standard DROID DP)
+# =============================================================================
+optimizer:
+  _target_: torch.optim.Adam
+  lr: 1.0e-4
+
+# =============================================================================
+# Training (step-based)
+# =============================================================================
+training:
+  seed: ${seed}
+  debug: false
+  resume: false
+
+  strategy: auto
+  accelerator: gpu
+  precision: "32-true"
+
+  lr_scheduler: constant
+  lr_warmup_steps: 0
+  num_epochs: null
+  max_steps: 25000
+
+  gradient_accumulate_every: 1
+  gradient_clip_val: null
+
+  use_ema: true
+  use_8bit_optimizer: false
+
+  checkpoint_every_steps: ${eval:'${training.max_steps} // 5'}
+  val_every: null
+
+
+  torch_compile: false
+  compile_mode: "reduce-overhead"
+
+# =============================================================================
+# Logging (WandB)
+# =============================================================================
+logging:
+  project: dah_stage2_droid_dp_libero
+  resume: false
+  mode: offline
+  name: ${run_name}
+  tags: ["dah", "stage2", "droid-dp", "libero", "lerobot", "language"]
+  id: null
+  group: null
+  entity: null
+  log_model: false
+
+# =============================================================================
+# LIBERO In-Training Rollout
+# =============================================================================
+libero_runner:
+  _target_: vlaworkspace.env_runner.libero_runner.LiberoRunner
+  task_suites:
+    - libero_spatial
+    - libero_object
+    - libero_goal
+    - libero_10
+  n_trials_per_task: 50
+  n_video_per_task: 1
+  n_envs: 25
+  replan_steps: ${n_action_steps}
+  n_obs_steps: ${n_obs_steps}
+  max_steps: null
+  num_steps_wait: 10
+  fps: 10
+  seed: ${seed}
+  resolution: 256
+
+# =============================================================================
+# Hydra
+# =============================================================================
+hydra:
+  job:
+    override_dirname: dah_stage2_droid_dp_libero
+  run:
+    dir: ${run_dir}
+  sweep:
+    dir: ${run_dir}
+    subdir: ${hydra.job.num}

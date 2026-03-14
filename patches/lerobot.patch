@@ -1,0 +1,12 @@
+diff --git a/src/lerobot/envs/libero.py b/src/lerobot/envs/libero.py
+index 94b08e99..e589b4b2 100644
+--- a/src/lerobot/envs/libero.py
++++ b/src/lerobot/envs/libero.py
+@@ -238,6 +238,7 @@ class LiberoEnv(gym.Env):
+         super().reset(seed=seed)
+         self._env.seed(seed)
+         if self.init_states and self._init_states is not None:
++            print(f"[LiberoEnv] reset: task_id={self.task_id}, episode_index={self.episode_index}, _init_state_id={self._init_state_id}, seed={seed}, total_init_states={len(self._init_states)}")
+             self._env.set_init_state(self._init_states[self._init_state_id])
+         raw_obs = self._env.reset()
+ 

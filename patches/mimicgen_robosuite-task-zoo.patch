@@ -1,0 +1,13 @@
+diff --git a/setup.py b/setup.py
+index 81a3734..b2fb47c 100644
+--- a/setup.py
++++ b/setup.py
+@@ -20,7 +20,7 @@ setup(
+         "numpy>=1.13.3",
+         "numba>=0.49.1",
+         "scipy>=1.2.3",
+-        "mujoco-py>=2.0.2.9",
++        # "mujoco-py>=2.0.2.9",  # Removed: using new mujoco package instead
+     ],
+     eager_resources=['*'],
+     include_package_data=True,

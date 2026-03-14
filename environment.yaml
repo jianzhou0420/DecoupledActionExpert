@@ -1,0 +1,68 @@
+name: DecoupledActionExpert
+channels:
+  - nvidia
+  - conda-forge
+
+dependencies:
+  - python=3.10.13
+  - cmake
+  - cython
+
+  # PyTorch with CUDA 12.4
+  - conda-forge::pytorch=2.6.0
+  - conda-forge::torchvision=0.21.0
+  - nvidia::cuda-toolkit=12.4
+
+  - lightning=2.6.0
+  - diffusers
+
+  # Core scientific
+  # Pin numpy>=1.25,<2.0 - numpy 2.x breaks mujoco rendering (causes weird robot colors)
+  - numpy>=1.25,<2.0
+  - scipy
+  - einops
+  - h5py
+  - msgpack-python
+  - matplotlib
+  - hydra-core
+  - omegaconf
+
+  # ML/AI
+  - conda-forge::huggingface_hub=0.34.3
+  - conda-forge::transformers=4.53.2
+  - conda-forge::tokenizers=0.21.4
+  # Pinned to match datasets compatibility (datasets requires fsspec<2025)
+  - conda-forge::fsspec=2024.9.0
+
+  # Logging
+  - conda-forge::wandb=0.23.0
+  - conda-forge::tensorboard=2.20.0
+
+  # Utilities
+  - tqdm
+  - termcolor
+  - natsort
+  - click
+  - multiprocess
+  - conda-forge::pytorch3d
+  - accelerate
+  - pillow
+  - psutil
+  - numba>=0.49.1
+  - imageio
+  - imageio-ffmpeg
+
+  - pip:
+      - tyro==0.9.22
+      - typeguard==4.4.2
+
+      - datasets==4.1.1
+
+      - mujoco==2.3.2
+      - gymnasium==0.29.1
+      - zarr
+      - imagecodecs
+      - av==12.0.0
+      - opencv-python<4.10  # <4.10 required for numpy<2.0 compatibility
+      - tensorboardX
+      - gdown

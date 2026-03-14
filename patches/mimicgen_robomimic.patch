@@ -1,0 +1,51 @@
+diff --git a/robomimic/envs/env_robosuite.py b/robomimic/envs/env_robosuite.py
+index 7f983cd..d0eaac0 100644
+--- a/robomimic/envs/env_robosuite.py
++++ b/robomimic/envs/env_robosuite.py
+@@ -85,10 +85,13 @@ class EnvRobosuite(EB.EnvBase):
+             if kwargs["has_offscreen_renderer"]:
+                 # ensure that we select the correct GPU device for rendering by testing for EGL rendering
+                 # NOTE: this package should be installed from this link (https://github.com/StanfordVL/egl_probe)
+-                import egl_probe
+-                valid_gpu_devices = egl_probe.get_available_devices()
+-                if len(valid_gpu_devices) > 0:
+-                    kwargs["render_gpu_device_id"] = valid_gpu_devices[0]
++                try:
++                    import egl_probe
++                    valid_gpu_devices = egl_probe.get_available_devices()
++                    if len(valid_gpu_devices) > 0:
++                        kwargs["render_gpu_device_id"] = valid_gpu_devices[0]
++                except ImportError:
++                    pass
+         else:
+             # make sure gripper visualization is turned off (we almost always want this for learning)
+             kwargs["gripper_visualization"] = False
+diff --git a/robomimic/macros.py b/robomimic/macros.py
+index 3b6c050..3e81684 100644
+--- a/robomimic/macros.py
++++ b/robomimic/macros.py
+@@ -18,10 +18,4 @@ WANDB_API_KEY = None
+ try:
+     from robomimic.macros_private import *
+ except ImportError:
+-    from robomimic.utils.log_utils import log_warning
+-    import robomimic
+-    log_warning(
+-        "No private macro file found!"\
+-        "\nIt is recommended to use a private macro file"\
+-        "\nTo setup, run: python {}/scripts/setup_macros.py".format(robomimic.__path__[0])
+-    )
++    pass
+diff --git a/robomimic/utils/env_utils.py b/robomimic/utils/env_utils.py
+index 465b509..bba95ee 100644
+--- a/robomimic/utils/env_utils.py
++++ b/robomimic/utils/env_utils.py
+@@ -180,8 +180,6 @@ def create_env(
+         postprocess_visual_obs=True,
+         **kwargs,
+     )
+-    print("Created environment with name {}".format(env_name))
+-    print("Action size is {}".format(env.action_dimension))
+     return env
+ 
+ 
