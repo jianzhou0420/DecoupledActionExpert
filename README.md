@@ -1,24 +1,40 @@
-# Decoupled Action Head
+# Decoupled Action Expert
 
-Official codebase for the paper [*"Decoupled Action Head: Confining Task Knowledge to Conditioning Layers"*](https://arxiv.org/abs/2511.12101) (IROS 2026).
+Official codebase for the paper [*"Decoupled Action Expert: Confining Task Knowledge to the Conditioning Pathway"*](https://arxiv.org/abs/2511.12101) (IROS 2026).
 
 ## Overview
 
-Diffusion Policy (DP) and other Behavior Cloning methods remain constrained by scarce paired training data, and the internal mechanisms underlying DP's effectiveness are insufficiently understood. We observe that while observation-action pairs are expensive, continuous action sequences can be generated at nearly zero cost using forward kinematics (Joint Position -> End-Effector Pose).
+Large action experts in Vision-Language-Action models are widely assumed to be essential, yet the internal mechanisms underlying their effectiveness remain poorly understood. Do these large action backbones actually need their full capacity? Where does task-specific knowledge reside — in the backbone or the conditioning pathway?
 
-We propose a **decoupled training recipe** that leverages this observation-free data to pretrain a general action head, then freezes it and adapts to new tasks through conditioning layers only. This serves as both a practical training method and an analysis tool to understand where task knowledge resides in Diffusion Policy.
+We propose a **decoupled training recipe** to investigate these questions: pretrain a general-purpose action expert on observation-free forward-kinematics data, then freeze it and adapt to downstream manipulation tasks through the conditioning pathway only.
 
-### Key Findings
+### Questions We Ask
 
-1. **Task knowledge is confined to conditioning layers.** The near-identical performance of DP-C under normal (64.0%) vs decoupled (63.4%) training shows that the action generation backbone plays a limited role — task-specific knowledge lives in the conditioning modules.
+1. **Where does task knowledge reside — in the backbone or the conditioning pathway?** (IV-A) Our experiments suggest it lives in the conditioning pathway. Freezing the backbone and retraining only the conditioning modules largely preserves performance: DP-C achieves 63.6±1.8% (normal) vs 62.2±2.3% (decoupled) on MimicGen and 79.3±0.6% vs 76.8±0.9% on LIBERO.
 
-2. **Feature modulation is the effective conditioning method under decoupling.** FiLM conditioning works well because Stage 2 can learn new (gamma, beta) parameters for the frozen backbone. Cross-attention fails (-21.1%) because frozen Q/K/V weights force new features to align with the pretrained JP representation.
+2. **Do large action experts need their capacity?** (IV-B) Our experiments indicate they may not. A 5M-parameter MLP (DP-MLP) achieves comparable or better results than the 244M-parameter U-Net (DP-C) on both benchmarks: 65.9±0.7% vs 63.6±1.8% on MimicGen, 84.7±0.5% vs 79.3±0.6% on LIBERO.
 
-3. **The action head is less critical than expected.** A 4M-parameter MLP (DP-MLP) can replace the 244M-parameter U-Net (DP-C) while preserving performance, achieving 83.9% faster training under normal training and 89.1% under decoupling.
+3. **Can out-of-distribution data be used for Stage 1 pretraining?** (IV-C) It appears so. DROID pretraining yields gains over in-distribution pretraining (+1.6 on MimicGen, +1.5 on LIBERO) despite complete distribution shift.
+
+4. **What does the backbone actually learn — task-specific knowledge or general trajectory structure?** (IV-D) Our results point toward the latter. Three pretraining variants (joint positions, end-effector poses, no conditioning) achieve comparable results (62.2–63.8%), suggesting the backbone captures general trajectory patterns regardless of pretraining signal.
+
+5. **Which conditioning mechanisms survive backbone freezing?** (IV-E) We compare seven mechanisms on an identical transformer backbone (normal → decoupled):
+
+   | Category | Method | Normal | Decoupled |
+   |----------|--------|--------|-----------|
+   | Modulation | AdaLN-Zero | 64.0% | 64.5% |
+   | Modulation | AdaLN | 62.0% | 62.3% |
+   | Modulation | adaRMSNorm | 63.8% | 60.0% |
+   | Modulation | FiLM | 59.5% | 51.8% |
+   | Modulation | Additive | 57.0% | 45.3% |
+   | Token | Cross-Attention | 61.3% | 19.8% |
+   | Token | Prefix Tuning | 56.3% | 19.5% |
+
+   The pattern suggests that whether conditioning separates from backbone parameters matters — modulation-based methods stay robust, while token-based methods collapse.
 
 ### Method
 
-- **Stage 1**: Pretrain the action head on observation-free data (Joint Position -> End-Effector Pose) using forward kinematics. The conditioning modules and action backbone are trained together.
+- **Stage 1**: Pretrain the action expert on observation-free data (Joint Position → End-Effector Pose) using forward kinematics. The conditioning modules and action backbone are trained together.
 - **Stage 2**: Freeze the action backbone, replace conditioning layers, and train only the observation encoders and new conditioning modules on task-specific image data.
 
 ### Evaluation Environments
@@ -79,11 +95,11 @@ All experiments from the paper are documented in `scripts/slurm/IROS/ALL_PAPER_E
 
 | Section | Experiment | Script |
 |---------|-----------|--------|
-| V-A | Normal vs Decoupled (DP-C) | `IROS_dp_normal_mimicgen_pertask.sh`, `IROS_dp_stage2_mimicgen_pertask.sh` |
-| V-B | DROID pretraining transfer | `IROS_dp_stage2_mimicgen_pertask_droid_pretrain.sh` |
-| V-C | Lightweight backbones (DP-MLP vs DP-C) | Same scripts with `dp_mlp` argument |
-| V-D | Conditioning source ablation (JP vs eePose vs unconditional vs random frozen) | `IROS_dp_stage2_mimicgen_pertask_ablation_cond_source.sh` |
-| V-E | Conditioning method ablation (8 methods) | `IROS_dp_stage2_mimicgen_pertask_ablation_cond_method.sh` |
+| IV-A | Normal vs Decoupled (DP-C) | `IROS_dp_normal_mimicgen_pertask.sh`, `IROS_dp_stage2_mimicgen_pertask.sh` |
+| IV-B | Lightweight backbones (DP-MLP vs DP-C) | Same scripts with `dp_mlp` argument |
+| IV-C | DROID pretraining transfer | `IROS_dp_stage2_mimicgen_pertask_droid_pretrain.sh` |
+| IV-D | Conditioning source ablation (JP vs eePose vs unconditional vs random frozen) | `IROS_dp_stage2_mimicgen_pertask_ablation_cond_source.sh` |
+| IV-E | Conditioning method ablation (7 methods) | `IROS_dp_stage2_mimicgen_pertask_ablation_cond_method.sh` |
 
 Before running SLURM scripts, set `#SBATCH --account=<YOUR_ACCOUNT>` in each script.
 
@@ -130,8 +146,8 @@ Training data is hosted on HuggingFace and downloaded automatically:
 
 ```bibtex
 @article{zhou2025decoupled,
-  title={Decoupled Action Head: Confining Task Knowledge to Conditioning Layers},
-  author={Zhou, Jian and Lin, Sihao and Fu, Shuai and Wu, Qi},
+  title={Decoupled Action Expert: Confining Task Knowledge to the Conditioning Pathway},
+  author={Zhou, Jian and Lin, Sihao and Fu, Shuai and Li, Zerui and Zhou, Gengze and Wu, Qi},
   journal={arXiv preprint arXiv:2511.12101},
   year={2025}
 }
