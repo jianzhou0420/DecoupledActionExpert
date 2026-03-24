@@ -4,7 +4,11 @@ Official codebase for the paper [*"Decoupled Action Expert: Confining Task Knowl
 
 ## Overview
 
-Large action experts in Vision-Language-Action models are widely assumed to be essential, yet the internal mechanisms underlying their effectiveness remain poorly understood. Do these large action backbones actually need their full capacity? Where does task-specific knowledge reside — in the backbone or the conditioning pathway?
+<p align="center">
+  <img src="assets/figures/teaser.png" width="480"/>
+</p>
+
+Image diffusion models such as Stable Diffusion denoise 16,384 structured latent values, while a manipulation policy generates only 16×10=160 physically correlated action values — of which only a fraction are executed before replanning (8 steps in DP, 5 in π₀). Yet action experts in current VLA designs often adopt similar-scale architectures. This orders-of-magnitude mismatch in output complexity raises a natural question: do these large action backbones actually need their capacity? Where does task-specific knowledge reside — in the backbone or the conditioning pathway?
 
 We propose a **decoupled training recipe** to investigate these questions: pretrain a general-purpose action expert on observation-free forward-kinematics data, then freeze it and adapt to downstream manipulation tasks through the conditioning pathway only.
 
@@ -33,6 +37,10 @@ We propose a **decoupled training recipe** to investigate these questions: pretr
    The pattern suggests that whether conditioning separates from backbone parameters matters — modulation-based methods stay robust, while token-based methods collapse.
 
 ### Method
+
+<p align="center">
+  <img src="assets/figures/method.png" width="700"/>
+</p>
 
 - **Stage 1**: Pretrain the action expert on observation-free data (Joint Position → End-Effector Pose) using forward kinematics. The conditioning modules and action backbone are trained together.
 - **Stage 2**: Freeze the action backbone, replace conditioning layers, and train only the observation encoders and new conditioning modules on task-specific image data.

@@ -26,4 +26,4 @@ MimicGen (8 tasks A-H), LIBERO (4 suites)
 None currently tracked.
 
 ---
-*Last updated: 2026-03-24 — Renamed legacy TaskFusion references to DecoupledActionExpert*
+*Last updated: 2026-03-24 — Added paper figures to README, improved overview motivation*

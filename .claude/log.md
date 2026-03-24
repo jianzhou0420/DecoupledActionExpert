@@ -4,6 +4,26 @@ This file tracks all code modifications, bug fixes, and feature additions.
 
 ---
 
+## [2026-03-24 13:41] Add Figures to README and Improve Overview
+
+### Summary
+Added paper figures (teaser, method) to README and rewrote the overview paragraph to match the paper's motivation (image diffusion vs action generation dimensionality mismatch).
+
+### Files Modified
+| File | Change Type | Description |
+|------|-------------|-------------|
+| `assets/figures/teaser.png` | Created | Teaser figure (image diffusion vs action generation) |
+| `assets/figures/method.png` | Created | Method overview (Stage 1 & 2 pipeline) |
+| `assets/figures/cond_ablation.png` | Created | Conditioning mechanism ablation chart |
+| `README.md` | Modified | Added teaser and method figures, rewrote overview to discuss dimensionality mismatch |
+
+### Features/Improvements
+- Added teaser figure under Overview section
+- Added method figure under Method section
+- Rewrote overview paragraph to follow paper's motivation: 16,384 latent values vs 160 physically correlated action values, replanning after partial execution
+
+---
+
 ## [2026-03-24 13:28] Rename TaskFusion to DecoupledActionExpert
 
 ### Summary
