@@ -1,8 +1,8 @@
 """
-Base Policy Interface for TaskFusion.
+Base Policy Interface for DecoupledActionExpert.
 
 All VLA policies must implement this interface to be compatible with the
-TaskFusion training and evaluation system.
+DecoupledActionExpert training and evaluation system.
 
 Required methods:
     - compute_loss(batch) -> Tensor: Training forward pass

@@ -1,5 +1,5 @@
 """
-TaskFusion Trainer.
+DecoupledActionExpert Trainer.
 
 A clean PyTorch Lightning trainer for VLA models.
 

@@ -1,4 +1,4 @@
-"""WebSocket policy server for TaskFusion policies."""
+"""WebSocket policy server for DecoupledActionExpert policies."""
 
 import asyncio
 import http
@@ -34,13 +34,13 @@ def unpack_array(obj):
 
 
 class WebsocketPolicyServer:
-    """Serves a TaskFusion policy via WebSocket.
+    """Serves a DecoupledActionExpert policy via WebSocket.
 
     This server accepts observations from clients, runs policy inference,
     and returns predicted actions.
 
     Example:
-        wrapper = TaskFusionPolicyWrapper(policy, device="cuda:0")
+        wrapper = DecoupledActionExpertPolicyWrapper(policy, device="cuda:0")
         server = WebsocketPolicyServer(wrapper, host="0.0.0.0", port=8000)
         server.serve_forever()
     """

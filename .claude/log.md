@@ -4,6 +4,24 @@ This file tracks all code modifications, bug fixes, and feature additions.
 
 ---
 
+## [2026-03-24 13:28] Rename TaskFusion to DecoupledActionExpert
+
+### Summary
+Replaced all legacy "TaskFusion" references with "DecoupledActionExpert" across 4 files (7 occurrences).
+
+### Files Modified
+| File | Change Type | Description |
+|------|-------------|-------------|
+| `pyproject.toml` | Modified | Updated project description |
+| `trainer.py` | Modified | Updated module docstring |
+| `src/vlaworkspace/policy/base_policy.py` | Modified | Updated docstring (2 occurrences) |
+| `src/vlaworkspace/serving/websocket_policy_server.py` | Modified | Updated docstring and comments (3 occurrences) |
+
+### Features/Improvements
+- Removed all legacy "TaskFusion" naming from codebase
+
+---
+
 ## [2026-03-24 13:22] Explore Project & Update README for v2 Paper
 
 ### Summary
