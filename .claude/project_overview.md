@@ -1,7 +1,7 @@
 # Project Overview
 
 **Project**: DecoupledActionExpert
-**Paper**: "Decoupled Action Expert: Confining Task Knowledge to the Conditioning Pathway" (IROS 2026, arXiv:2511.12101)
+**Paper**: "Decoupled Action Expert: Confining Task Knowledge to the Conditioning Pathway" (RSS 2026, arXiv:2511.12101)
 **Author**: Jian Zhou, Sihao Lin, Shuai Fu, Zerui Li, Gengze Zhou, Qi Wu
 
 ## Purpose
@@ -14,7 +14,7 @@ Python 3.10, PyTorch 2.6, PyTorch Lightning 2.6, Hydra, MuJoCo 2.3.2, HuggingFac
 - `trainer.py` — Main Hydra + Lightning trainer
 - `src/vlaworkspace/` — Core package (policy, model, adaptors, dataset, env_runner, serving, config)
 - `scripts/train/` — Local training scripts (debug + full)
-- `scripts/slurm/IROS/` — SLURM cluster scripts for paper experiments
+- `scripts/slurm/RSS/` — SLURM cluster scripts for paper experiments
 
 ## Architecture Variants
 dp_c (UNet 244M), dp_t (Transformer), dp_t_film (Transformer+FiLM), dp_t_unified, dp_mlp (MLP 5M)

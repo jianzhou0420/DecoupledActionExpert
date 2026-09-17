@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=dah_s1
+#SBATCH --job-name=dah_s1_droid
 #SBATCH --account=<YOUR_ACCOUNT>
 #SBATCH --partition=gpu
 #SBATCH --nodes=1
@@ -8,24 +8,30 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=128G
 #SBATCH --time=2:00:00
-#SBATCH --exclude=g015
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
 
 
 # =============================================================================
-# DAH Stage 1: Diffusion action head with low-dim state only (no images)
-# Always trains on the combined ABCDEFGH dataset (8 tasks).
+# DAH Stage 1: MimicGen DP variants on DROID dataset (SLURM)
 #
-# Dataset: JianZhou0420/DAH_mimicgen_ABCDEFGH_8tasks_alldemos_lowdim
-# Hardware: 1x GPU, 4 CPUs, 32GB RAM (preloaded in-memory, no dataloader workers)
-#
-# Usage:
-#   sbatch scripts/slurm/train_dah_stage1.sh <arch> <seed> [EXTRA_ARGS...]
-#   sbatch scripts/slurm/train_dah_stage1.sh dp_c 42
-#   sbatch scripts/slurm/train_dah_stage1.sh dp_c 42 batch_size=128
+# Reuses MimicGen stage 1 configs (dah_stage1_dp_c, etc.) with CLI overrides
+# to train on DROID data instead of MimicGen data.
 #
 # Architecture options: dp_c, dp_t, dp_t_film, dp_mlp
+#
+# Key overrides vs MimicGen default:
+#   - Dataset: JianZhou0420/droid_lowdim (25M frames)
+#   - obs_keys/action_keys: DROID format
+#   - Robot adaptor: DroidStage1Robot (cond_type=jp)
+#   - preload=false (dataset too large for memory)
+#   - Step-based training (50K steps) instead of epoch-based
+#   - IO_meta unchanged: obs=[8], action=[10] already match jp mode
+#
+# Usage:
+#   sbatch scripts/slurm/RSS/RSS_dp_stage1_droid_data.sh <arch> <seed> [NOTE] [EXTRA_ARGS...]
+#   sbatch scripts/slurm/RSS/RSS_dp_stage1_droid_data.sh dp_c 42
+#   sbatch scripts/slurm/RSS/RSS_dp_stage1_droid_data.sh dp_t 42 first_run
 # =============================================================================
 
 set -e
@@ -33,21 +39,17 @@ set -e
 _NOTE="${3:-}"
 LOG_DIR="data/logs/$(date +'%Y.%m.%d')"
 mkdir -p "$LOG_DIR"
-exec > "${LOG_DIR}/train_dah_stage1_all_${1}_${SLURM_JOB_ID}${_NOTE:+_${_NOTE}}.log" 2>&1
+exec > "${LOG_DIR}/train_dah_stage1_${1}_droid_${SLURM_JOB_ID}${_NOTE:+_${_NOTE}}.log" 2>&1
 
 # --------------------
 # Configuration
 # --------------------
 if [ -z "$1" ] || [ -z "$2" ]; then
-    echo "Usage: sbatch $0 <arch> <seed> [EXTRA_ARGS...]"
+    echo "Usage: sbatch $0 <arch> <seed> [NOTE] [EXTRA_ARGS...]"
     echo ""
     echo "Architecture options: dp_c, dp_t, dp_t_film, dp_mlp"
     echo ""
-    echo "Dataset: DAH_mimicgen_ABCDEFGH_8tasks_alldemos_lowdim"
-    echo "  A = stack_d1              E = stack_three_d1"
-    echo "  B = square_d2             F = hammer_cleanup_d1"
-    echo "  C = coffee_d2             G = three_piece_assembly_d2"
-    echo "  D = threading_d2          H = mug_cleanup_d1"
+    echo "Dataset: JianZhou0420/droid_lowdim (DROID)"
     echo ""
     echo "Example: sbatch $0 dp_c 42"
     exit 1
@@ -60,11 +62,11 @@ shift 3 2>/dev/null || shift 2
 EXTRA_ARGS="$@"
 
 CONFIG_NAME="dah_stage1_${ARCH}"
-scontrol update JobId="$SLURM_JOB_ID" JobName="dah_s1_${ARCH}"
-REPO_ID="JianZhou0420/DAH_mimicgen_ABCDEFGH_8tasks_alldemos_lowdim"
+scontrol update JobId="$SLURM_JOB_ID" JobName="dah_s1_${ARCH}_droid"
+REPO_ID="JianZhou0420/droid_lowdim"
 
 echo "=============================================="
-echo "SLURM Job: DAH Stage 1 — ${ARCH}"
+echo "SLURM Job: DAH Stage 1 — ${ARCH} on DROID"
 echo "=============================================="
 echo "Job ID: $SLURM_JOB_ID"
 echo "Node: $(hostname)"
@@ -94,6 +96,8 @@ mkdir -p "$WANDB_CACHE_DIR" "$WANDB_CONFIG_DIR" "$WANDB_DATA_DIR"
 unset SLURM_NTASKS
 unset SLURM_NTASKS_PER_NODE
 
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+
 echo "GPU Information:"
 nvidia-smi
 
@@ -102,7 +106,7 @@ nvidia-smi
 # --------------------
 DATE_PART=$(date +'%Y.%m.%d')
 TIME_PART=$(date +'%H.%M.%S')
-RUN_NAME="DAH_stage1_${ARCH}_ABCDEFGH_seed${SEED}"
+RUN_NAME="DAH_stage1_${ARCH}_droid_seed${SEED}"
 if [ -n "${NOTE}" ]; then RUN_NAME="${RUN_NAME}_${NOTE}"; fi
 RUN_DIR="data/outputs/${DATE_PART}/${TIME_PART}_${RUN_NAME}"
 
@@ -116,17 +120,27 @@ python trainer.py \
     batch_size=256 \
     \
     dataset.repo_id="${REPO_ID}" \
-    training.num_epochs=6 \
-    training.checkpoint_every=1\
+    dataset.obs_keys="[observation.state]" \
+    dataset.action_keys="[action.cartesian_position,action.gripper_position]" \
+    adaptor.robot._target_=vlaworkspace.adaptors.robots.DroidStage1Robot \
+    +adaptor.robot.cond_type=jp \
+    preload=false \
+    cache_in_memory=true \
+    dataloader.num_workers=4 \
+    dataloader.persistent_workers=true \
+    training.num_epochs=-1 \
+    +training.max_steps=50000 \
+    training.checkpoint_every=null \
+    +training.checkpoint_every_steps=10000 \
     \
     run_dir="${RUN_DIR}" \
     run_name="${RUN_NAME}" \
     \
-    logging.project="IROS_FINAL_EXP" \
-    logging.group="DAH_stage1_mimicgen_seed${SEED}" \
+    logging.project="RSS_FINAL_EXP" \
+    logging.group="DAH_stage1_droid_seed${SEED}" \
     logging.name="${RUN_NAME}" \
     logging.mode="offline" \
-    logging.tags="[dah,stage1,${ARCH},ABCDEFGH,slurm]" \
+    logging.tags="[dah,stage1,${ARCH},droid,slurm]" \
     \
     ${EXTRA_ARGS}
 

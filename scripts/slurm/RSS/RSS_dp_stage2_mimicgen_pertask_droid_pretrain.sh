@@ -15,21 +15,21 @@
 # =============================================================================
 # DAH Stage 2 Per-Task on MimicGen — DROID Pretrained (SLURM Array)
 #
-# Same as IROS_dp_stage2_mimicgen_pertask.sh, but uses a Stage 1 checkpoint
-# pretrained on DROID data (from IROS_dp_stage1_droid_data.sh).
+# Same as RSS_dp_stage2_mimicgen_pertask.sh, but uses a Stage 1 checkpoint
+# pretrained on DROID data (from RSS_dp_stage1_droid_data.sh).
 #
 # The DROID Stage 1 used the same MimicGen config (dah_stage1_<arch>) with
 # DroidStage1Robot adaptor, so the model architecture is identical to
 # MimicGen-pretrained Stage 1. No extra architecture overrides needed.
 #
 # Usage:
-#   sbatch --array=0-7 scripts/slurm/IROS/IROS_dp_stage2_mimicgen_pertask_droid_pretrain.sh <arch> <stage1_ckpt> [SEED] [NOTE] [EXTRA_ARGS...]
+#   sbatch --array=0-7 scripts/slurm/RSS/RSS_dp_stage2_mimicgen_pertask_droid_pretrain.sh <arch> <stage1_ckpt> [SEED] [NOTE] [EXTRA_ARGS...]
 #
 #   # Train all 8 tasks in parallel:
-#   sbatch --array=0-7 scripts/slurm/IROS/IROS_dp_stage2_mimicgen_pertask_droid_pretrain.sh dp_c /path/to/stage1.ckpt
+#   sbatch --array=0-7 scripts/slurm/RSS/RSS_dp_stage2_mimicgen_pertask_droid_pretrain.sh dp_c /path/to/stage1.ckpt
 #
 #   # Train specific tasks:
-#   sbatch --array=0,3,6 scripts/slurm/IROS/IROS_dp_stage2_mimicgen_pertask_droid_pretrain.sh dp_c /path/to/stage1.ckpt 42
+#   sbatch --array=0,3,6 scripts/slurm/RSS/RSS_dp_stage2_mimicgen_pertask_droid_pretrain.sh dp_c /path/to/stage1.ckpt 42
 #
 # Architecture options: dp_c, dp_t, dp_t_film, dp_mlp
 #
@@ -72,7 +72,7 @@ if [ -z "$1" ] || [ -z "$2" ]; then
     echo ""
     echo "Architecture options: dp_c, dp_t, dp_t_film, dp_mlp"
     echo ""
-    echo "Stage 1 checkpoint: from IROS_dp_stage1_droid_data.sh"
+    echo "Stage 1 checkpoint: from RSS_dp_stage1_droid_data.sh"
     exit 1
 fi
 
@@ -177,7 +177,7 @@ python trainer.py \
     dataloader.num_workers=32 \
     training.checkpoint_every=1 \
     \
-    logging.project="IROS_FINAL_EXP" \
+    logging.project="RSS_FINAL_EXP" \
     logging.group="DAH_stage2_${ARCH}_droid_pretrain_seed${SEED}" \
     logging.name="${RUN_NAME}" \
     'logging.tags=["dah","stage2","'"${ARCH}"'","'"${LETTER}"'","droid-pretrain","slurm"]' \

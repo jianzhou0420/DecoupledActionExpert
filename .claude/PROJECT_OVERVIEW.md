@@ -2,7 +2,7 @@
 
 ## Description
 
-Official codebase for the IROS 2026 paper "Decoupled Action Head: Confining Task Knowledge to Conditioning Layers" ([arXiv:2511.12101](https://arxiv.org/abs/2511.12101)).
+Official codebase for the RSS 2026 paper "Decoupled Action Head: Confining Task Knowledge to Conditioning Layers" ([arXiv:2511.12101](https://arxiv.org/abs/2511.12101)).
 
 The project proposes a **decoupled training recipe** for Diffusion Policy in robot manipulation:
 - **Stage 1**: Pretrain an action head on observation-free data (Joint Position → End-Effector Pose) using forward kinematics
@@ -86,9 +86,9 @@ DecoupledActionExpert/
 │   │   ├── train_dah_stage2*.sh   # Stage 2 fine-tuning scripts
 │   │   ├── train_dah_normal*.sh   # Normal (end-to-end) training
 │   │   └── train_droid_dp_*.sh    # DROID-based training scripts
-│   ├── slurm/IROS/               # SLURM cluster scripts for paper experiments
+│   ├── slurm/RSS/               # SLURM cluster scripts for paper experiments
 │   │   ├── ALL_PAPER_EXP.sh       # Master index of all paper experiments
-│   │   └── IROS_*.sh              # Individual experiment scripts
+│   │   └── RSS_*.sh              # Individual experiment scripts
 │   └── create_random_ckpt.py     # Utility to create random checkpoint
 ├── assets/                        # Pre-computed normalization statistics
 │   ├── DAH_normalizers_*/         # Normalizer pickle files + norm_stats.json

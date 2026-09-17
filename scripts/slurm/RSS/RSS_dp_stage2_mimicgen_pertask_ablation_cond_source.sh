@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=dah_s2
+#SBATCH --job-name=dah_s2_abl
 #SBATCH --account=<YOUR_ACCOUNT>
 #SBATCH --partition=gpu
 #SBATCH --nodes=1
@@ -13,22 +13,20 @@
 #SBATCH --error=/dev/null
 
 # =============================================================================
-# DAH Stage 2 Per-Task Training on MimicGen LeRobot Dataset (SLURM Array)
+# DAH Stage 2 Per-Task — Conditioning Source Ablation (SLURM Array)
 #
-# Each array index maps to one task. All tasks run as parallel SLURM jobs.
+# Same training as regular stage2 (no cond overrides). The conditioning source
+# only affects stage1 pretraining — this script just tracks which stage1
+# checkpoint (jp/eepose/unconditional) was used, for WandB naming.
 #
 # Usage:
-#   sbatch --array=0-7 scripts/slurm/train_dah_stage2_all_stage1.sh <arch> <stage1_ckpt> [SEED] [NOTE] [EXTRA_ARGS...]
+#   sbatch --array=0-7 $0 <arch> <stage1_ckpt> <cond_type> [SEED] [NOTE] [EXTRA_ARGS...]
 #
-#   # Train all 8 tasks in parallel:
-#   sbatch --array=0-7 scripts/slurm/train_dah_stage2_all_stage1.sh dp_c /path/to/stage1.ckpt
-#
-#   # Train specific tasks:
-#   sbatch --array=0,3,6 scripts/slurm/train_dah_stage2_all_stage1.sh dp_t /path/to/stage1.ckpt 42
+#   sbatch --array=0-7 $0 dp_c /path/to/stage1.ckpt jp
+#   sbatch --array=0-7 $0 dp_t /path/to/stage1.ckpt eepose 42 my_note
 #
 # Architecture options: dp_c, dp_t, dp_t_film, dp_mlp
-#
-# The stage1 checkpoint is a single shared checkpoint used by all tasks.
+# Conditioning types: jp, eepose, unconditional (for naming only)
 #
 # Index mapping:
 #   0=stack_d1  1=square_d2  2=coffee_d2  3=threading_d2
@@ -38,10 +36,10 @@
 
 set -e
 
-_NOTE="${4:-}"
+_NOTE="${5:-}"
 LOG_DIR="data/logs/$(date +'%Y.%m.%d')"
 mkdir -p "$LOG_DIR"
-exec > "${LOG_DIR}/train_dah_stage2_all_stage1_array_${1}_${SLURM_ARRAY_TASK_ID}_${SLURM_ARRAY_JOB_ID}${_NOTE:+_${_NOTE}}.log" 2>&1
+exec > "${LOG_DIR}/train_dah_stage2_cond_source_${1}_${3}_${SLURM_ARRAY_TASK_ID}_${SLURM_ARRAY_JOB_ID}${_NOTE:+_${_NOTE}}.log" 2>&1
 
 # --------------------
 # Task mapping (index -> task)
@@ -64,19 +62,31 @@ REPO_SUFFIX="alldemos"
 # --------------------
 # Parse arguments
 # --------------------
-if [ -z "$1" ] || [ -z "$2" ]; then
-    echo "Usage: sbatch --array=0-7 $0 <arch> <stage1_ckpt> [SEED] [NOTE] [EXTRA_ARGS...]"
+if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
+    echo "Usage: sbatch --array=0-7 $0 <arch> <stage1_ckpt> <cond_type> [SEED] [NOTE] [EXTRA_ARGS...]"
     echo ""
     echo "Architecture options: dp_c, dp_t, dp_t_film, dp_mlp"
+    echo ""
+    echo "Conditioning types (for naming only — no training overrides):"
+    echo "  jp            - stage1 trained with joint_position"
+    echo "  eepose        - stage1 trained with eePose"
+    echo "  unconditional - stage1 trained with zeros"
     exit 1
 fi
 
 ARCH="$1"
 STAGE1_CKPT="$2"
-SEED="${3:-42}"
-NOTE="${4:-}"
-shift 4 2>/dev/null || shift 3 2>/dev/null || shift 2 2>/dev/null || true
+COND_TYPE="$3"
+SEED="${4:-42}"
+NOTE="${5:-}"
+shift 5 2>/dev/null || shift 4 2>/dev/null || shift 3 2>/dev/null || true
 EXTRA_ARGS="$@"
+
+# Validate cond_type
+if [ "$COND_TYPE" != "jp" ] && [ "$COND_TYPE" != "eepose" ] && [ "$COND_TYPE" != "unconditional" ]; then
+    echo "ERROR: Invalid cond_type '$COND_TYPE'. Must be jp, eepose, or unconditional."
+    exit 1
+fi
 
 # --------------------
 # Resolve current task from SLURM_ARRAY_TASK_ID
@@ -91,7 +101,7 @@ if [ -z "$TASK_NAME" ]; then
 fi
 
 CONFIG_NAME="dah_stage2_or_normal_${ARCH}"
-scontrol update JobId="$SLURM_JOB_ID" JobName="dah_s2_${ARCH}"
+scontrol update JobId="$SLURM_JOB_ID" JobName="dah_s2_${ARCH}_${COND_TYPE}"
 REPO_ID="${REPO_PREFIX}_${TASK_NAME}_${REPO_SUFFIX}"
 
 # Verify stage 1 checkpoint exists
@@ -101,7 +111,7 @@ if [ ! -f "${STAGE1_CKPT}" ]; then
 fi
 
 echo "=============================================="
-echo "SLURM Array Job: DAH Stage 2 (${ARCH})"
+echo "SLURM Array Job: DAH Stage 2 Cond Source Ablation (${ARCH} / ${COND_TYPE})"
 echo "=============================================="
 echo "Job ID: ${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
 echo "Node: $(hostname)"
@@ -109,6 +119,7 @@ echo "Architecture: ${ARCH}"
 echo "Config: ${CONFIG_NAME}"
 echo "Task: ${LETTER} = ${TASK_NAME}"
 echo "Seed: $SEED"
+echo "Conditioning source: ${COND_TYPE} (naming only — no training overrides)"
 echo "Stage1 checkpoint: ${STAGE1_CKPT}"
 echo "Dataset: ${REPO_ID}"
 echo "GPU: $CUDA_VISIBLE_DEVICES"
@@ -143,7 +154,7 @@ nvidia-smi
 # --------------------
 DATE_PART=$(date +'%Y.%m.%d')
 TIME_PART=$(date +'%H.%M.%S')
-EXP_NAME="DAH_stage2_${ARCH}_seed${SEED}"
+EXP_NAME="DAH_stage2_${ARCH}_${COND_TYPE}_seed${SEED}"
 
 RUN_NAME="${EXP_NAME}__${LETTER}_${TASK_NAME}"
 if [ -n "${NOTE}" ]; then RUN_NAME="${RUN_NAME}_${NOTE}"; fi
@@ -154,6 +165,7 @@ echo "------------------------------------------"
 echo "Task ${LETTER}: ${TASK_NAME}"
 echo "  repo_id:         ${REPO_ID}"
 echo "  stage1_ckpt:     ${STAGE1_CKPT}"
+echo "  cond_type:       ${COND_TYPE}"
 echo "  run_dir:         ${RUN_DIR}"
 echo "------------------------------------------"
 
@@ -169,13 +181,13 @@ python trainer.py \
     run_dir="${RUN_DIR}" \
     run_name="${RUN_NAME}" \
     \
-    dataloader.num_workers=32 \
+    dataloader.num_workers=16 \
     training.checkpoint_every=1 \
     \
-    logging.project="IROS_FINAL_EXP" \
-    logging.group="DAH_stage2_${ARCH}_seed${SEED}" \
+    logging.project="RSS_FINAL_EXP" \
+    logging.group="DAH_stage2_${ARCH}_${COND_TYPE}_seed${SEED}" \
     logging.name="${RUN_NAME}" \
-    'logging.tags=["dah","stage2","'"${ARCH}"'","'"${LETTER}"'","slurm"]' \
+    'logging.tags=["dah","stage2","'"${ARCH}"'","'"${COND_TYPE}"'","'"${LETTER}"'","ablation","slurm"]' \
     logging.mode="offline" \
     \
     ${EXTRA_ARGS}
@@ -185,5 +197,6 @@ touch "${RUN_DIR}/done.mark"
 echo ""
 echo "=============================================="
 echo "Task ${LETTER} (${TASK_NAME}) done!"
+echo "Conditioning source: ${COND_TYPE}"
 echo "Checkpoint dir: ${RUN_DIR}/checkpoints/"
 echo "=============================================="

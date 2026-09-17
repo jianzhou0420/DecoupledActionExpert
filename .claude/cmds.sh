@@ -100,14 +100,14 @@ bash scripts/train/train_droid_dp_mlp_libero.sh                     # MLP
 # =============================================================================
 
 # Master experiment index
-# scripts/slurm/IROS/ALL_PAPER_EXP.sh
+# scripts/slurm/RSS/ALL_PAPER_EXP.sh
 
 # Individual SLURM scripts (set #SBATCH --account=<YOUR_ACCOUNT> first)
-# scripts/slurm/IROS/IROS_dp_normal_mimicgen_pertask.sh             # V-A: Normal training
-# scripts/slurm/IROS/IROS_dp_stage2_mimicgen_pertask.sh             # V-A: Decoupled training
-# scripts/slurm/IROS/IROS_dp_stage2_mimicgen_pertask_droid_pretrain.sh  # V-B: DROID transfer
-# scripts/slurm/IROS/IROS_dp_stage2_mimicgen_pertask_ablation_cond_source.sh  # V-D: Cond source
-# scripts/slurm/IROS/IROS_dp_stage2_mimicgen_pertask_ablation_cond_method.sh  # V-E: Cond method
+# scripts/slurm/RSS/RSS_dp_normal_mimicgen_pertask.sh             # V-A: Normal training
+# scripts/slurm/RSS/RSS_dp_stage2_mimicgen_pertask.sh             # V-A: Decoupled training
+# scripts/slurm/RSS/RSS_dp_stage2_mimicgen_pertask_droid_pretrain.sh  # V-B: DROID transfer
+# scripts/slurm/RSS/RSS_dp_stage2_mimicgen_pertask_ablation_cond_source.sh  # V-D: Cond source
+# scripts/slurm/RSS/RSS_dp_stage2_mimicgen_pertask_ablation_cond_method.sh  # V-E: Cond method
 
 # =============================================================================
 # Utilities

@@ -1,6 +1,8 @@
 # Decoupled Action Expert
 
-Official codebase for the paper [*"Decoupled Action Expert: Confining Task Knowledge to the Conditioning Pathway"*](https://arxiv.org/abs/2511.12101) (IROS 2026).
+Official codebase for [*"Freeze, Share, Shrink: Rethinking the Action Backbone in Diffusion Policies"*](https://arxiv.org/abs/2511.12101) — Diffusion for Robot Learning (Diff4RL) Workshop, Robotics: Science and Systems (RSS) 2026, Sydney.
+
+Earlier drafts circulated as *"Decoupled Action Expert: Confining Task Knowledge to the Conditioning Pathway"*; the repository name keeps that naming.
 
 ## Overview
 
@@ -95,19 +97,19 @@ bash scripts/train/train_dah_normal.sh dp_c A                  # MimicGen, per-t
 bash scripts/train/train_droid_dp_libero.sh                    # LIBERO
 ```
 
-Architecture options: `dp_c` (U-Net, 244M), `dp_t` (Transformer), `dp_t_film` (Transformer+FiLM), `dp_mlp` (MLP, 4M). Task letters: A-H (see `scripts/slurm/IROS/ALL_PAPER_EXP.sh` for mapping).
+Architecture options: `dp_c` (U-Net, 244M), `dp_t` (Transformer), `dp_t_film` (Transformer+FiLM), `dp_mlp` (MLP, 4M). Task letters: A-H (see `scripts/slurm/RSS/ALL_PAPER_EXP.sh` for mapping).
 
 ## Reproducing Paper Experiments
 
-All experiments from the paper are documented in `scripts/slurm/IROS/ALL_PAPER_EXP.sh`. This file is organized by paper section:
+All experiments from the paper are documented in `scripts/slurm/RSS/ALL_PAPER_EXP.sh`. This file is organized by paper section:
 
 | Section | Experiment | Script |
 |---------|-----------|--------|
-| IV-A | Normal vs Decoupled (DP-C) | `IROS_dp_normal_mimicgen_pertask.sh`, `IROS_dp_stage2_mimicgen_pertask.sh` |
+| IV-A | Normal vs Decoupled (DP-C) | `RSS_dp_normal_mimicgen_pertask.sh`, `RSS_dp_stage2_mimicgen_pertask.sh` |
 | IV-B | Lightweight backbones (DP-MLP vs DP-C) | Same scripts with `dp_mlp` argument |
-| IV-C | DROID pretraining transfer | `IROS_dp_stage2_mimicgen_pertask_droid_pretrain.sh` |
-| IV-D | Conditioning source ablation (JP vs eePose vs unconditional vs random frozen) | `IROS_dp_stage2_mimicgen_pertask_ablation_cond_source.sh` |
-| IV-E | Conditioning method ablation (7 methods) | `IROS_dp_stage2_mimicgen_pertask_ablation_cond_method.sh` |
+| IV-C | DROID pretraining transfer | `RSS_dp_stage2_mimicgen_pertask_droid_pretrain.sh` |
+| IV-D | Conditioning source ablation (JP vs eePose vs unconditional vs random frozen) | `RSS_dp_stage2_mimicgen_pertask_ablation_cond_source.sh` |
+| IV-E | Conditioning method ablation (7 methods) | `RSS_dp_stage2_mimicgen_pertask_ablation_cond_method.sh` |
 
 Before running SLURM scripts, set `#SBATCH --account=<YOUR_ACCOUNT>` in each script.
 
@@ -132,7 +134,7 @@ DecoupledActionExpert/
 │   └── z_utils/                        # Utility modules
 ├── scripts/
 │   ├── train/                          # Local training scripts
-│   └── slurm/IROS/                     # SLURM scripts for paper experiments
+│   └── slurm/RSS/                     # SLURM scripts for paper experiments
 ├── assets/                             # Normalization statistics
 ├── patches/                            # Third-party compatibility patches
 ├── third_party/                        # Git submodules (lerobot, libero, mimicgen, etc.)
@@ -153,11 +155,12 @@ Training data is hosted on HuggingFace and downloaded automatically:
 ## Citation
 
 ```bibtex
-@article{zhou2025decoupled,
-  title={Decoupled Action Expert: Confining Task Knowledge to the Conditioning Pathway},
+@inproceedings{zhou2026freeze,
+  title={Freeze, Share, Shrink: Rethinking the Action Backbone in Diffusion Policies},
   author={Zhou, Jian and Lin, Sihao and Fu, Shuai and Li, Zerui and Zhou, Gengze and Wu, Qi},
-  journal={arXiv preprint arXiv:2511.12101},
-  year={2025}
+  booktitle={Diffusion for Robot Learning (Diff4RL) Workshop, Robotics: Science and Systems (RSS)},
+  year={2026},
+  note={arXiv:2511.12101}
 }
 ```
 

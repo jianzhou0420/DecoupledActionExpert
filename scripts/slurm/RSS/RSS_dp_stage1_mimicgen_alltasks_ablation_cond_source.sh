@@ -148,7 +148,7 @@ python trainer.py \
     run_dir="${RUN_DIR}" \
     run_name="${RUN_NAME}" \
     \
-    logging.project="IROS_FINAL_EXP" \
+    logging.project="RSS_FINAL_EXP" \
     logging.group="DAH_stage1_mimicgen_seed${SEED}" \
     logging.name="${RUN_NAME}" \
     logging.mode="offline" \

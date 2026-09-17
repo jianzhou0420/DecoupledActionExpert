@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=dah_norm_cond
+#SBATCH --job-name=dah_normal_pt
 #SBATCH --account=<YOUR_ACCOUNT>
 #SBATCH --partition=gpu
 #SBATCH --nodes=1
@@ -13,32 +13,28 @@
 #SBATCH --error=/dev/null
 
 # =============================================================================
-# DAH Normal Per-Task Training with Cond Method Ablation (SLURM Array)
+# DAH Normal Per-Task Training (SLURM Array)
 #
 # Each array index maps to one task. All tasks run as parallel SLURM jobs.
-# Trains a unified DP-T end-to-end with images + state (no stage1 pretraining).
+# Trains a diffusion policy end-to-end with images + state (no stage1
+# pretraining).
 #
 # Usage:
-#   # Train all 8 tasks with one cond method:
-#   sbatch --array=0-7 scripts/slurm/DAH/train_dah_normal_cond_method_pertask_array.sh <cond_method> [seed] [note] [EXTRA_ARGS...]
+#   # Train all 8 tasks in parallel:
+#   sbatch --array=0-7 scripts/slurm/train_dah_normal_pertask_array.sh <arch> [seed] [note] [EXTRA_ARGS...]
 #
 #   # Train tasks A,B,C only (indices 0,1,2):
-#   sbatch --array=0-2 scripts/slurm/DAH/train_dah_normal_cond_method_pertask_array.sh adaln_zero
+#   sbatch --array=0-2 scripts/slurm/train_dah_normal_pertask_array.sh dp_c
 #
 #   # Train specific tasks:
-#   sbatch --array=0,3,6 scripts/slurm/DAH/train_dah_normal_cond_method_pertask_array.sh film 42
+#   sbatch --array=0,3,6 scripts/slurm/train_dah_normal_pertask_array.sh dp_c 42
 #
-# Conditioning methods: cross_attn, prefix, film, adaln_zero, adaln, lora_cond, additive, lora_cond_uncond
+# Architecture options: dp_c, dp_t, dp_t_film, dp_mlp
 #
 # Index mapping:
 #   0=stack_d1  1=square_d2  2=coffee_d2  3=threading_d2
 #   4=stack_three_d1  5=hammer_cleanup_d1  6=three_piece_assembly_d2
 #   7=mug_cleanup_d1
-#
-# Launch all methods x 8 tasks:
-#   for m in cross_attn film adaln_zero adaln lora_cond prefix additive lora_cond_uncond; do
-#       sbatch --array=0-7 scripts/slurm/DAH/train_dah_normal_cond_method_pertask_array.sh $m 42
-#   done
 # =============================================================================
 
 set -e
@@ -46,7 +42,7 @@ set -e
 _NOTE="${3:-}"
 LOG_DIR="data/logs/$(date +'%Y.%m.%d')"
 mkdir -p "$LOG_DIR"
-exec > "${LOG_DIR}/train_dah_normal_cond_method_${1}_${SLURM_ARRAY_TASK_ID}_${SLURM_ARRAY_JOB_ID}${_NOTE:+_${_NOTE}}.log" 2>&1
+exec > "${LOG_DIR}/train_dah_normal_pertask_array_${1}_${SLURM_ARRAY_TASK_ID}_${SLURM_ARRAY_JOB_ID}${_NOTE:+_${_NOTE}}.log" 2>&1
 
 # --------------------
 # Task mapping (index -> task)
@@ -70,18 +66,9 @@ REPO_SUFFIX="alldemos"
 # Parse arguments
 # --------------------
 if [ -z "$1" ]; then
-    echo "Usage: sbatch --array=0-7 $0 <cond_method> [seed] [note] [EXTRA_ARGS...]"
+    echo "Usage: sbatch --array=0-7 $0 <arch> [seed] [note] [EXTRA_ARGS...]"
     echo ""
-    echo "Conditioning methods:"
-    echo "  cross_attn  - Encoder-decoder cross-attention"
-    echo "  prefix      - Prefix tokens, self-attention"
-    echo "  film        - FiLM affine modulation"
-    echo "  adaln_zero  - Adaptive LayerNorm + gating"
-    echo "  adaln       - Adaptive LayerNorm (no zero-init gating)"
-    echo "  ada_rms_norm - Adaptive RMSNorm (no zero-init gating)"
-    echo "  lora_cond   - Low-rank conditioned Q/V bias"
-    echo "  additive    - Projected bias addition"
-    echo "  lora_cond_uncond - LoRA (maps to lora_cond for normal training)"
+    echo "Architecture options: dp_c, dp_t, dp_t_film, dp_mlp"
     echo ""
     echo "Index mapping:"
     echo "  0=stack_d1  1=square_d2  2=coffee_d2  3=threading_d2"
@@ -90,29 +77,14 @@ if [ -z "$1" ]; then
     exit 1
 fi
 
-COND_METHOD="$1"
+ARCH="$1"
 SEED="${2:-42}"
 NOTE="${3:-}"
 shift 3 2>/dev/null || shift 2 2>/dev/null || shift 1 2>/dev/null || true
 EXTRA_ARGS="$@"
 
-# Validate cond_method
-VALID_METHODS="cross_attn prefix film adaln_zero adaln ada_rms_norm lora_cond additive lora_cond_uncond"
-if ! echo "$VALID_METHODS" | grep -qw "$COND_METHOD"; then
-    echo "ERROR: Invalid cond_method '$COND_METHOD'."
-    echo "Must be one of: $VALID_METHODS"
-    exit 1
-fi
-
-# Translate compound methods to policy cond_method
-# lora_cond_uncond: "unconditional" only applies to stage 1; normal uses standard lora_cond
-POLICY_COND_METHOD="$COND_METHOD"
-if [ "$COND_METHOD" = "lora_cond_uncond" ]; then
-    POLICY_COND_METHOD="lora_cond"
-fi
-
-CONFIG_NAME="dah_stage2_or_normal_dp_t_unified"
-scontrol update JobId="$SLURM_JOB_ID" JobName="dah_norm_${COND_METHOD}"
+CONFIG_NAME="dah_stage2_or_normal_${ARCH}"
+scontrol update JobId="$SLURM_JOB_ID" JobName="dah_normal_pt_${ARCH}"
 
 # --------------------
 # Resolve current task from SLURM_ARRAY_TASK_ID
@@ -129,12 +101,12 @@ fi
 REPO_ID="${REPO_PREFIX}_${TASK_NAME}_${REPO_SUFFIX}"
 
 echo "=============================================="
-echo "SLURM Array Job: DAH Normal Cond Method — ${COND_METHOD}"
+echo "SLURM Array Job: DAH Normal Per-Task — ${ARCH}"
 echo "=============================================="
 echo "Job ID: ${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
 echo "Node: $(hostname)"
+echo "Architecture: ${ARCH}"
 echo "Config: ${CONFIG_NAME}"
-echo "Cond method: ${COND_METHOD}"
 echo "Task: ${LETTER} = ${TASK_NAME}"
 echo "Seed: ${SEED}"
 echo "Dataset: ${REPO_ID}"
@@ -170,7 +142,7 @@ nvidia-smi
 # --------------------
 DATE_PART=$(date +'%Y.%m.%d')
 TIME_PART=$(date +'%H.%M.%S')
-EXP_NAME="DAH_normal_dp_t_${COND_METHOD}_seed${SEED}"
+EXP_NAME="DAH_normal_${ARCH}_seed${SEED}"
 
 RUN_NAME="${EXP_NAME}__${LETTER}_${TASK_NAME}"
 if [ -n "${NOTE}" ]; then RUN_NAME="${RUN_NAME}_${NOTE}"; fi
@@ -188,8 +160,6 @@ python trainer.py \
     seed=${SEED} \
     train_mode=normal_rollout \
     \
-    policy.cond_method="${POLICY_COND_METHOD}" \
-    \
     dataset.repo_id="${REPO_ID}" \
     adaptor.model.norm_stats_path="auto" \
     \
@@ -199,11 +169,11 @@ python trainer.py \
     dataloader.num_workers=16 \
     training.checkpoint_every=1 \
     \
-    logging.project="IROS_FINAL_EXP" \
-    logging.group="DAH_normal_cond_method_${COND_METHOD}_seed${SEED}" \
+    logging.project="RSS_FINAL_EXP" \
+    logging.group="DAH_normal_${ARCH}_seed${SEED}" \
     logging.name="${RUN_NAME}" \
     logging.mode="offline" \
-    'logging.tags=["dah","normal","dp_t_unified","'"${COND_METHOD}"'","'"${LETTER}"'","cond_ablation","slurm"]' \
+    'logging.tags=["dah","normal","'"${ARCH}"'","'"${LETTER}"'","slurm"]' \
     \
     ${EXTRA_ARGS}
 
@@ -212,6 +182,5 @@ touch "${RUN_DIR}/done.mark"
 echo ""
 echo "=============================================="
 echo "Task ${LETTER} (${TASK_NAME}) done!"
-echo "Method: ${COND_METHOD}"
 echo "Checkpoint dir: ${RUN_DIR}/checkpoints/"
 echo "=============================================="

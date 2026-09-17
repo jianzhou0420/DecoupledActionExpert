@@ -134,7 +134,7 @@ python trainer.py \
     run_name="${RUN_NAME}" \
     \
     dataloader.num_workers=16 \
-    logging.project="IROS_FINAL_EXP" \
+    logging.project="RSS_FINAL_EXP" \
     logging.group="DAH_normal_${ARCH_INFIX}_seed${SEED}" \
     logging.name="${RUN_NAME}" \
     logging.mode="offline" \
